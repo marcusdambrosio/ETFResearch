@@ -14,6 +14,12 @@ ETFlist = ['QQQ', 'SPXL', 'SPXS', 'FDN', 'VGT',
            'RYT','FIVG', 'XLC','EMQQ','XBUY']
 
 def pull_data(tickers, update = False):
+    '''
+    This function uses pandas_datareader to pull stock data for a provided list of symbols/tickers
+    :param tickers:
+    :param update:
+    :return:
+    '''
     if 'DATA' not in os.listdir():
         os.mkdir('DATA')
 
@@ -32,16 +38,36 @@ def pull_data(tickers, update = False):
 
 
 def overall_return(data, ticker = False, yearsBack = 5):
+    '''
+    This function calculates overall returns for each dataset
+    :param data: 
+    :param ticker: 
+    :param yearsBack: 
+    :return: 
+    '''
     if ticker:
         data = pd.read_csv(os.path.join('DATA', f'{ticker}.csv'), index_col = 'Date', parse_dates = True)
-        # data['ts'] = data.index.values.astype(np.int64) / 10 ** 9
-        # data['Date'] = data.index
-        # data.set_index('ts', drop = True, inplace = True)
-        return (data.AdjClose.values[-1] - data.loc[data.index[-1] - dt.timedelta(days = yearsBack*365), 'AdjClose']) /( data.loc[
-            data.index[-1] - dt.timedelta(days = yearsBack*365), 'AdjClose']), data
+        daysBack = dt.timedelta(days = yearsBack*365)
+        returnVal = 0
+        while returnVal == 0: #prevents holdups if the date lands on a weekend
+            try:
+                daysBack = daysBack - dt.timedelta(days=1)
+                returnVal = (data.AdjClose.values[-1] - data.loc[data.index[-1] - daysBack, 'AdjClose']) /( data.loc[
+                    data.index[-1] - daysBack, 'AdjClose'])
+            except:
+                continue
+        return returnVal, data
     else:
-        return (data.AdjClose.values[-1] - data.loc[data.index[-1] - dt.timedelta(days=yearsBack * 365), 'AdjClose']) / (data.loc[
-            data.index[-1] - dt.timedelta(days=yearsBack * 365), 'AdjClose'])
+        returnVal = 0
+        daysBack = daysBack - dt.timedelta(days=1)
+        while returnVal == 0:
+            try:
+                daysBack += 1
+                returnVal = (data.AdjClose.values[-1] - data.loc[data.index[-1] - daysBack, 'AdjClose']) / (data.loc[
+                data.index[-1] - daysBack, 'AdjClose'])
+            except:
+                continue
+        return returnVal
 
 
 def annualized_return(data, ticker = False, yearsBack = 5):
@@ -50,10 +76,7 @@ def annualized_return(data, ticker = False, yearsBack = 5):
     If a ticker is provided, the function will then load this ticker's price data and output this as well.'''
     if ticker:
         data = pd.read_csv(os.path.join('DATA', f'{ticker}.csv'), index_col='Date', parse_dates=True)
-        # data['ts'] = df.index.values.astype(np.int64) / 10 ** 9
-        # data.set_index('ts', drop = True, inplace = True)
-        # print(data.index)
-    '''HAVE TO FIGURE OUT INDEXING FOR THIS SHIT'''
+
     data.set_index('ts', drop = True, inplace = True)
     closes = data.AdjClose
     currYear = int(dt.datetime.today().year)
@@ -95,4 +118,4 @@ def best_option(tickers, yearsBack, update = False):
         print(f"The best {metric} result is {results[results[metric] == results[metric].max()].index} with {results[metric]}.")
 
 
-best_option(ETFlist, yearsBack=[1,3,5])
+best_option(ETFlist, yearsBack=[1,3,5], update = False)
